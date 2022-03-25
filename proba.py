@@ -1,19 +1,11 @@
-from pyparsing import Word, Literal, alphas
+from pyparsing import Word, Literal, alphas,ZeroOrMore,Suppress
 
-salutation = Word(alphas + "'")
-comma = Literal(",")
-greetee = Word(alphas)
-endPunctuation = Literal("!")
+source = "a, b, c,d"
+wd = Word(alphas)
+wd_list1 = wd + Word(',' + wd)
+print(wd_list1.parseString(source))
 
-greeting = salutation + comma + greetee + endPunctuation
-
-tests = ("Hello, World!",
-         "Hey, Jude!",
-         "Hi, Mom!",
-         "G'day, Mate!",
-         "Yo, Adrian!",
-         "Howdy, Pardner!",
-         "Whattup, Dude!")
-
-for t in tests:
-    print(t, "->", greeting.parseString(t))
+ # often, delimiters that are useful during parsing are just in the
+ # way afterward - use Suppress to keep them out of the parsed output
+wd_list2 = wd + ZeroOrMore(Suppress(',') + wd)
+print(wd_list2.parseString(source))
