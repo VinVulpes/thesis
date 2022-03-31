@@ -25,21 +25,19 @@ prefix = Suppress('[') + Word(alphas + ":") + Suppress(']')  # префикс с
 message = Word(
     alphas + ":" + "'" + nums + "." + "=" + " " + "(" + ")" + "," + "-" + "*")  # ! еще цифры в сообщении# сообщение
 text = ZeroOrMore(type_mes + file_path + line_num + time_m + cause + prefix + message)
-info = 0
-m = 0
-i = 0
-dict = {}
+d = {}
 for line in log_file:
     if line.startswith("UVM_INFO /") or line.startswith("UVM_WARNING /") or line.startswith(
             "UVM_ERROR /") or line.startswith("UVM_FATAL /") or line.startswith("OTHER /"):
         pr_text = text.parseString(line)
-        pars_file.write(line)
-        """
-        try:
-            for key in dict.keys():
-                for i in range(6)
-                    if pr[i]==key:
-                        dict[]
-        except KeyError as e:
-            print("Отсутствует значение", e)
-        """
+        pars_file.write(str(pr_text)+'\n')
+        fl = 0
+        for i in range(6):
+            for j in d.copy():
+                if pr_text[i] == j:
+                    d[j][1] += 1
+                    fl = 1
+                    break
+            if fl == 0:
+                d.update({pr_text[i]: [i, 1]})
+            fl = 0
