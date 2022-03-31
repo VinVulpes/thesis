@@ -1,6 +1,3 @@
-from pyparsing import *
-a = 3
-b = 'hello'
-c = False
-r = None
-print(type(a), type(b), type(c),type(r))
+import datetime
+data = datetime.datetime.today() - datetime.timedelta(1)
+print(data.strftime('%Y-%m-%d %H.%M.%S'))
