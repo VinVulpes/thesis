@@ -42,9 +42,10 @@ CREATE TABLE Parsing (
   FOREIGN KEY (Type_mes) REFERENCES Quantity(Name));
 """
 create_table_quant = """
-CREATE TABLE Quantity ( 
-  Name INTEGER PRIMARY KEY AUTOINCREMENT,
-  Quan INTEGER NULL DEFAULT NULL);
+CREATE TABLE Quantity (  
+  Name VARCHAR NULL DEFAULT NULL PRIMARY KEY,
+  Quan INTEGER NULL DEFAULT 0,
+  Type_mes_q INTEGER NULL DEFAULT NULL);
 """
 # Создание БД
 connection = create_connection("DB_Diplom.sqlite")
@@ -52,7 +53,7 @@ execute_query(connection, create_table_quant)
 execute_query(connection, create_table_pars)
 
 
-def insert_param(Name_FULL, Type_mes, File_path, Line_num_file, Time_m, Cause, Prefix, Message, Num_str):
+def insert_param_pars(Name_FULL, Type_mes, File_path, Line_num_file, Time_m, Cause, Prefix, Message, Num_str):
     global sqlite_connection
     try:
         sqlite_connection = sqlite3.connect('DB_Diplom.sqlite')
@@ -68,6 +69,43 @@ def insert_param(Name_FULL, Type_mes, File_path, Line_num_file, Time_m, Cause, P
         cursor.close()
     except sqlite3.Error as error:
         print("Ошибка при работе с SQLite", error)
+    finally:
+        if sqlite_connection:
+            sqlite_connection.close()
+            print("Соединение с SQLite закрыто")
+
+
+def insert_quant(Name_f, Type_mes_q):
+    global sqlite_connection
+    try:
+        sqlite_connection = sqlite3.connect('DB_Diplom.sqlite')
+        cursor = sqlite_connection.cursor()
+        print("Подключен к SQLite")
+        sqlite_check = """
+        SELECT Name FROM Quantity
+        WHERE Name=?;
+        """
+        sqlite_incr = '''
+                                UPDATE Quantity
+                                SET Quan = Quan+1
+                                WHERE Name = ?;
+                                '''
+        if cursor.execute(sqlite_check, (str(Name_f),)).fetchone() is None:
+            sqlite_insert_quant = """   INSERT INTO Quantity
+                                      ( Name,Type_mes_q)
+                                      VALUES (?, ?);
+                                      """
+            data_q = (str(Name_f), Type_mes_q)
+            cursor.execute(sqlite_insert_quant, data_q)
+            cursor.execute(sqlite_incr, (str(Name_f),))
+        else:
+            cursor.execute(sqlite_incr, (str(Name_f),))
+        sqlite_connection.commit()
+        print("Переменные Python успешно вставлены в таблицу Quantity")
+        cursor.close()
+    except sqlite3.Error as error:
+        print("Ошибка при работе с SQLite", error)
+        print(Name_f,Type_mes_q)
     finally:
         if sqlite_connection:
             sqlite_connection.close()
@@ -101,10 +139,13 @@ for num_str, line in enumerate(log_file):
               '!Line_num_file =', pr_text[2], ' !Time_m=', pr_text[3], '!Cause =',pr_text[4], '!Prefix =',pr_text[5],
               '! Message =',pr_text[6], '!Номер строки в реал файле =',num_str)
         """
-        insert_param(' '.join(text.parseString(line)), pr_text[0], pr_text[1], pr_text[2], pr_text[3], pr_text[4], pr_text[5],
-                     pr_text[6], num_str)
+        insert_param_pars(' '.join(text.parseString(line)), pr_text[0], pr_text[1], pr_text[2], pr_text[3], pr_text[4],
+                          pr_text[5],
+                          pr_text[6], num_str)
+        for i in range(7):
+            insert_quant((pr_text[i],), i)
         """
-        fl = 0
+        fl = 0 
         for i in range(6):
             for j in d.copy(): 
                 if pr_text[i] == j:
