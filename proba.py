@@ -1,33 +1,22 @@
-from sqlite3 import *
+import datetime
+db_name = "DB_Diplom"+ datetime.strftime('%H.%M.%S %d-%m-%Y') +".sqlite"
+print(db_name)
 
-# SQL
-def create_connection(path):
-    connection = None
-    try:
-        connection = sqlite3.connect(path)
-        print("Подключение к SQLite БД успешно")
-    except Error as e:
-        print(f"Ошибка при подключении к SQLite БД: '{e}'")
 
-    return connection
 
-    return connection
-def execute_query(connection, query):
-    curs = connection.cursor()
-    try:
-        curs.execute(query)
-        connection.commit()
-        print("Запрос выполнен успешно")
-    except Error as e:
-        print(query)
-        print(f"Ошибка при запросе: '{e}'")
-table= '''
-CREATE TABLE test(id integer primary key AUTOINCREMENT
-                , page varchar(10)
-                , dp_record_id integer
-                , webserver_id integer
-                , foreign key (webserver_id) REFERENCES target_dp(id));
-'''
-
-connection = create_connection("Proba.sqlite")
-execute_query(connection, table)
+#Словарь
+"""
+        fl = 0 
+        for i in range(6):
+            for j in d.copy(): 
+                if pr_text[i] == j:
+                    d[j][1] += 1
+                    fl = 1
+                    break
+            if fl == 0:
+                d.update({pr_text[i]: [i, 1]})
+            fl = 0
+#Вывод статистики - какие сообщения, их тип и сколько их всего
+for key, val in d.items():
+    print('Сообщение: ', key, 'Тип: ', val[0], 'Встретилось: ', val[1],' раз')
+"""
