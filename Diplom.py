@@ -1,11 +1,11 @@
 from pyparsing import *
-import datetime
-import sqlite3
+import datetime #
+import sqlite3 #
 from sqlite3 import *
 
-data = datetime.datetime.today() - datetime.timedelta(1)
+data = datetime.datetime.today() - datetime.timedelta(1) # текущая дата и время
 # SQL
-def create_connection(path):
+def create_connection(path): # Создание БД
     connection = None
     try:
         connection = sqlite3.connect(path)
@@ -16,7 +16,7 @@ def create_connection(path):
     return connection
 
 
-def execute_query(connection, query):
+def execute_query(connection, query): # Запрос к БД
     curs = connection.cursor()
     try:
         curs.execute(query)
@@ -26,8 +26,8 @@ def execute_query(connection, query):
         print(query)
         print(f"Ошибка при запросе: '{e}'")
 
-
-create_table_pars = """
+# Таблица Parsing
+create_table_pars = """ 
 CREATE TABLE Parsing (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   Name_FULL VARCHAR NULL DEFAULT NULL,
@@ -41,6 +41,7 @@ CREATE TABLE Parsing (
   Num_str INTEGER NULL DEFAULT NULL,
   FOREIGN KEY (Type_mes) REFERENCES Quantity(Name));
 """
+# Таблица Quantity
 create_table_quant = """
 CREATE TABLE Quantity (  
   Name VARCHAR NULL DEFAULT NULL PRIMARY KEY,
@@ -48,11 +49,11 @@ CREATE TABLE Quantity (
   Type_mes_q INTEGER NULL DEFAULT NULL);
 """
 
-
+# Вставка параметров в таблицу Parsing
 def insert_param_pars(Name_FULL, Type_mes, File_path, Line_num_file, Time_m, Cause, Prefix, Message, Num_str):
     global sqlite_connection
     try:
-        sqlite_connection = sqlite3.connect(db_name)
+        sqlite_connection = sqlite3.connect(db_name_new)
         cursor = sqlite_connection.cursor()
         print("Подключен к SQLite")
         sqlite_insert_with_param = """INSERT INTO Parsing
@@ -70,11 +71,11 @@ def insert_param_pars(Name_FULL, Type_mes, File_path, Line_num_file, Time_m, Cau
             sqlite_connection.close()
             print("Соединение с SQLite закрыто")
 
-
+# Вставка параметров в таблицу Quantity
 def insert_quant(Name_f, Type_mes_q):
     global sqlite_connection
     try:
-        sqlite_connection = sqlite3.connect(db_name)
+        sqlite_connection = sqlite3.connect(db_name_new)
         cursor = sqlite_connection.cursor()
         print("Подключен к SQLite")
         sqlite_check = """
@@ -108,7 +109,7 @@ def insert_quant(Name_f, Type_mes_q):
             print("Соединение с SQLite закрыто")
 
 
-
+# Парсинг логфайла и вствка данных
 def parsing_file(patrh_log_file):
     log_file = open(patrh_log_file, 'r')
     pars_file = open("Parsing_file " + data.strftime('%H.%M.%S %d-%m-%Y') + ".log", "a+")
@@ -133,6 +134,7 @@ def parsing_file(patrh_log_file):
                               pr_text[6], num_str)
             for i in range(7):
                 insert_quant((pr_text[i],), i)
+    return 'successful'
 
 # Поиск по журналу
 def search_word(file, word):
@@ -149,11 +151,12 @@ def search_word(file, word):
 # Красивый интерфейс
 # ! не забудь вывод красивый (дата, номер теста и тд)
 
-
 # Создание БД
-db_name = "DB_Diplom "+ data.strftime('%H.%M.%S %d-%m-%Y') +".sqlite"  # Создание БД
-connection = create_connection(db_name) # Подключение к БД
-execute_query(connection, create_table_pars) #Создание таблицы Parsing
-execute_query(connection, create_table_quant) #Создание таблицы Quntity
+db_name_new = "DB_Diplom "+ data.strftime('%H.%M.%S %d-%m-%Y') +".sqlite"  # Создание БД
+connection = create_connection(db_name_new) # Подключение к БД
+execute_query(connection, create_table_pars) # Создание таблицы Parsing
+execute_query(connection, create_table_quant) # Создание таблицы Quntity
 
-parsing_file("xrun_register_rw.log")
+parsing_file("xrun_register_rw.log") # Парсинг логфайла и вставка в таблицы
+
+# Графический интерфейс
