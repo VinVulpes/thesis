@@ -1,0 +1,2 @@
+SELECT * FROM Parsing
+WHERE Comments IS NOT NULL;

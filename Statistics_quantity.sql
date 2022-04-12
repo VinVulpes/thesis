@@ -1,0 +1,2 @@
+SELECT * FROM Quantity
+ORDER BY Quan DESC;
