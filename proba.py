@@ -1,3 +1,18 @@
+# sql вывод статистики
+import sqlite3
+with open('Statistics.sql', 'r') as sql_file:
+    sql_script = sql_file.read()
+db_name = '1 12.51.44 11-04-2022.sqlite'
+db = sqlite3.connect(db_name)
+print(db_name)
+print(db)
+cursor = db.cursor()
+req = '''SELECT * FROM Parsing'''
+cursor.execute(req)
+result = cursor.fetchall()
+print(result)
+
+"""
 from kivy.app import App
 from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout  # кнопки должны быть внутри слоя
@@ -54,7 +69,6 @@ class MyApp(App):
 if __name__ == "__main__":
     MyApp().run()
 # Словарь
-"""
         fl = 0 
         for i in range(6):
             for j in d.copy(): 
@@ -68,4 +82,16 @@ if __name__ == "__main__":
 #Вывод статистики - какие сообщения, их тип и сколько их всего
 for key, val in d.items():
     print('Сообщение: ', key, 'Тип: ', val[0], 'Встретилось: ', val[1],' раз')
+    
+    
+    # Поиск по журналу
+def search_word(file, word):
+    word = str(word)
+    arr_row = []
+    for row, line in enumerate(file):
+        if word in line:
+            arr_row.append(row + 1)
+    if arr_row == []:
+        return 'Значение остутсвует в файле'
+    return arr_row
 """

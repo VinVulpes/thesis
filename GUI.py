@@ -8,7 +8,7 @@ exit_btn = sg.Button('Выход')
 layout_main = [[new_bd_btn, ex_bd_btn], [exit_btn]]
 
 layout_new_db = [
-    [sg.Text("Введите путь к лог файлу:")], [sg.Input()],
+    [sg.Text("Введите путь к лог файлу:")], [sg.Input()],[sg.Text("Введите название теста:")], [sg.Input()],
     [sg.Button("Загрузить в новую БД отпарсенный файл")], [sg.Button("Выход")]]
 layout_way_db = [
     [sg.Text("Введите путь к БД:")], [sg.Input()],
@@ -76,6 +76,7 @@ while True:
         if ev_way_db == 'Подключить БД':
             # подключение библиотеки бд
             print(val_way_db[0])
+            #db_name = val_way_db[0]
             fl_way_db = False
             win_way_db.close()
             window = sg.Window("Задачи", layout_task)
