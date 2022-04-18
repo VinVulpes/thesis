@@ -9,7 +9,7 @@ data = datetime.datetime.today() - datetime.timedelta(1)  # текущая да�
 
 
 # SQL
-def create_connection(path):  # Создание БД
+def create_connection(path):  # Соединение с БД
     connection = None
     try:
         connection = sqlite3.connect(path)
@@ -57,64 +57,37 @@ CREATE TABLE Quantity (
 
 
 # Вставка параметров в таблицу Parsing
-def insert_param_pars(Name_FULL, Type_mes, File_path, Line_num_file, Time_m, Cause, Prefix, Message, Num_str):
-    global sqlite_connection
-    try:
-        sqlite_connection = sqlite3.connect(db_name)
-        cursor = sqlite_connection.cursor()
-        print("Подключен к SQLite")
-        sqlite_insert_with_param = """INSERT INTO Parsing
-                                      (  Name_FULL,Type_mes ,File_path ,Line_num_file ,Time_m , Cause ,  Prefix ,  Message,  Num_str)
-                                      VALUES (?, ?, ?,?,?,?,?,?,?);"""
-        data = (Name_FULL, Type_mes, File_path, Line_num_file, Time_m, Cause, Prefix, Message, Num_str)
-        cursor.execute(sqlite_insert_with_param, data)
-        sqlite_connection.commit()
-        print("Переменные Python успешно вставлены в таблицу Parsing")
-        cursor.close()
-    except sqlite3.Error as error:
-        print("Ошибка при работе с SQLite", error)
-    finally:
-        if sqlite_connection:
-            sqlite_connection.close()
-            print("Соединение с SQLite закрыто")
+def insert_param_pars(d):
+    cursor = sqlite_connection.cursor()
+    with open('Insert_pars.sql', 'r') as sql_file:
+        sqlite_insert_with_param = sql_file.read()
+    cursor.executemany(sqlite_insert_with_param, d)
+    print("Переменные Python успешно вставлены в таблицу Parsing")
 
 
 # Вставка параметров в таблицу Quantity
-def insert_quant(Name_f, Type_mes_q):
-    global sqlite_connection
-    try:
-        sqlite_connection = sqlite3.connect(db_name)
-        cursor = sqlite_connection.cursor()
-        print("Подключен к SQLite")
-        sqlite_check = """
-        SELECT Name FROM Quantity
-        WHERE Name=?;
-        """
-        sqlite_incr = '''
-                                UPDATE Quantity
-                                SET Quan = Quan+1
-                                WHERE Name = ?;
-                                '''
-        if cursor.execute(sqlite_check, (str(Name_f),)).fetchone() is None:
-            sqlite_insert_quant = """   INSERT INTO Quantity
-                                      ( Name,Type_mes_q)
-                                      VALUES (?, ?);
-                                      """
-            data_q = (str(Name_f), Type_mes_q)
-            cursor.execute(sqlite_insert_quant, data_q)
-            cursor.execute(sqlite_incr, (str(Name_f),))
+def insert_quant(d):
+    cursor = sqlite_connection.cursor()
+    sqlite_check = """
+            SELECT Name FROM Quantity
+            WHERE Name=?;
+            """
+    sqlite_incr = '''
+                                    UPDATE Quantity
+                                    SET Quan = Quan+1
+                                    WHERE Name = ?;
+                                    '''
+    sqlite_insert_quant = """   INSERT INTO Quantity
+                                          ( Name,Type_mes_q)
+                                          VALUES (?, ?);
+                                          """
+    for i in range(len(d)):
+        if cursor.execute(sqlite_check, (str(d[i][0]),)).fetchone() is None:
+            cursor.execute(sqlite_insert_quant, (str(d[i][0]), d[i][1]))
+            cursor.execute(sqlite_incr, (str(d[i][0]),))
         else:
-            cursor.execute(sqlite_incr, (str(Name_f),))
-        sqlite_connection.commit()
+            cursor.execute(sqlite_incr, (str(d[i][0]),))
         print("Переменные Python успешно вставлены в таблицу Quantity")
-        cursor.close()
-    except sqlite3.Error as error:
-        print("Ошибка при работе с SQLite", error)
-        print(Name_f, Type_mes_q)
-    finally:
-        if sqlite_connection:
-            sqlite_connection.close()
-            print("Соединение с SQLite закрыто")
 
 
 # Парсинг логфайла и вствка данных
@@ -131,21 +104,33 @@ def parsing_file(patrh_log_file):
     message = Word(
         alphas + ":" + "'" + nums + "." + "=" + " " + "(" + ")" + "," + "-" + "*")  # ! еще цифры в сообщении# сообщение
     text = ZeroOrMore(type_mes + file_path + line_num + time_m + cause + prefix + message)
+    data_par = []
+    data_quant = []
+    global sqlite_connection
     for num_str, line in enumerate(log_file):
         if line.startswith("UVM_INFO /") or line.startswith("UVM_WARNING /") or line.startswith(
                 "UVM_ERROR /") or line.startswith("UVM_FATAL /") or line.startswith("OTHER /"):
             pr_text = text.parseString(line)
             pars_file.write(str(pr_text) + '\n')
             # Вставка отпарсенных данных в БД
-            insert_param_pars(' '.join(text.parseString(line)), pr_text[0], pr_text[1], pr_text[2], pr_text[3],
+            data_par.append([' '.join(text.parseString(line)), pr_text[0], pr_text[1], pr_text[2], pr_text[3],
                               pr_text[4],
                               pr_text[5],
-                              pr_text[6], num_str)
-            for i in range(7):
-                insert_quant((pr_text[i],), i)
+                              pr_text[6], num_str])
+            for i in range (7):
+                data_quant.append([(pr_text[i],), i])
+    print(data_quant)
+    try:
+        sqlite_connection = sqlite3.connect(db_name)
+        print("Подключен к SQLite")
+        insert_param_pars(data_par)
+        insert_quant(data_quant)
+    except sqlite3.Error as error:
+        print("Ошибка при работе с SQLite", error)
+    sqlite_connection.commit()
     return 'successful'
 
-
+# Печать шаблона таблицы Parsing в файл
 def print_pr(records_f, file):
     for row in records_f:
         file.write("ID: " + str(row[0]) + '\n')
@@ -162,10 +147,10 @@ def print_pr(records_f, file):
         file.write('\n')
     return file
 
-
+# Печать шаблона таблицы Quantity в файл
 def print_q(records_f, file):
     file.write(
-        '********************\nCправка о типе сообщений\n0 -Тип сообщения(UVM_...)\n1 -Путь к файлу\n2 -Время в фс\n3 -Номер строки в UVM файле\n4 -Причина вызова сообщения\n5 -Префикс сообщения\n6 -Сообщение\n********************\n')
+        '********************\nCправка о типе сообщений\n0 - Тип сообщения(UVM_...)\n1 -Путь к файлу\n2 -Время в фс\n3 -Номер строки в UVM файле\n4 -Причина вызова сообщения\n5 -Префикс сообщения\n6 -Сообщение\n********************\n')
     for row in records_f:
         file.write("Имя типа: " + str(row[0]) + '\n')
         file.write("Количество: " + str(row[1]) + '\n')
@@ -174,25 +159,30 @@ def print_q(records_f, file):
 
 # Графический интерфейс
 # Описание графического интерфеса
+# Описание главного окна
 layout_main = [[sg.Button('Создать новую базу данных'), sg.Button('Открыть существующую базу данных')],
                [sg.Button('Выход')]]
-
+# Описание окна Создания новой базы данных
 layout_new_db = [
     [sg.Text("Введите путь к лог файлу:")], [sg.Input()], [sg.Text("Введите название теста:")], [sg.Input()],
     [sg.Button("Загрузить в новую БД отпарсенный файл")], [sg.Button("Выход")]]
+# Описание окна Подключения к существующей базе данных
 layout_way_db = [
     [sg.Text("Введите путь к БД:")], [sg.Input()],
     [sg.Button("Подключить БД")], [sg.Button("Выход")]]
-
+# Описание окна Списка задач
 layout_task = [
     [sg.Button("Вывод статистики")], [sg.Button("Поиск по времени")],
     [sg.Button("Работа с комментариями")], [sg.Button("Фильтрация журнала")], [sg.Button("Выход")]]
+# Описание окна Поиска по времени
 layout_time = [
     [sg.Text("Введите время:")], [sg.Input()],
     [sg.Button("Поиск")], [sg.Button("Выход")]]
+# Описание окна Работы с комментариями
 layout_com = [[sg.Text("Введите комментарий:")],
               [sg.Input()], [sg.Text("Введите номер строки в логфайле:")], [sg.Input()], [sg.Button("Добавить")],
               [sg.Button("Вывести все строки с комментариями")], [sg.Button("Выход")]]
+# Описание окна Фильтрации файла
 layout_filt = [
     [sg.Button("Фильтровать по типам")],
     [sg.Button("Фильтровать по номерам строки в файле")],
@@ -200,8 +190,9 @@ layout_filt = [
     [sg.Text("Введите до какого времени")], [sg.Input()], [sg.Button("Фильтровать по диапозону времени")],
     [sg.Button("Выход")]]
 
-# Create the first Window
+# Открытие первого окна
 window = sg.Window('Главная', layout_main)
+# Флаги для закрытия окон
 fl_win_new_db = False
 fl_win_way_db = False
 fl_win_task = False
@@ -210,21 +201,23 @@ fl_win_com = False
 fl_win_filt = False
 # Открытие графического интерфейса
 while True:
-    event1, values1 = window.read()
-    if event1 in (sg.WIN_CLOSED, 'Выход'):
+    ev_main, val_main = window.read()
+    if ev_main in (sg.WIN_CLOSED, 'Выход'):
         # User closed the Window or hit the Cancel button
         if not fl_win_new_db:
             if not fl_win_task:
                 break
-
-    if not fl_win_new_db and event1 == 'Создать новую базу данных':
+    # Открытие окна создания новой базы данных
+    if not fl_win_new_db and ev_main == 'Создать новую базу данных':
         fl_win_new_db = True
         win_new_db = sg.Window("Новая БД", layout_new_db)
         window.close()
-    if not fl_win_new_db and event1 == 'Открыть существующую базу данных':
+    # Открытие окна подключения существующей базы данных
+    if not fl_win_new_db and ev_main == 'Открыть существующую базу данных':
         fl_win_way_db = True
         win_way_db = sg.Window("Существующая БД", layout_way_db)
         window.close()
+    # Обработка функций в окне создания новой базы данных
     if fl_win_new_db:
         ev_new_db, val_new_db = win_new_db.Read()
         if ev_new_db in ('Выход', sg.WIN_CLOSED):
@@ -250,6 +243,7 @@ while True:
             win_task = window
             fl_win_task = True
             win_new_db.close()
+    # Обработка функций в окне подключения существующей базы данных
     if fl_win_way_db:
         ev_way_db, val_way_db = win_way_db.Read()
         if ev_way_db in ("Выход', sg.WIN_CLOSED"):
@@ -263,6 +257,7 @@ while True:
             window = sg.Window("Задачи", layout_task)
             win_task = window
             fl_win_task = True
+    # Обработка функций в окне
     if fl_win_task:
         ev_task, val_task = win_task.Read()
         if ev_task in ('Выход', sg.WIN_CLOSED):
@@ -290,7 +285,6 @@ while True:
             db.close()
             win_task.close()
             fl_win_task = False
-            win_task.close()
         if ev_task == 'Поиск по времени':
             window = sg.Window("Время", layout_time)
             win_time = window

@@ -1,3 +1,10 @@
+# Открыть командную строку windows
+# Установить pyinstaller
+
+# Затем перейти в папку с Вашим файлом .py в командной строке (при помощи команды cd)
+# Запустить команду pyinstaller не забудьте указать имя вашего скрипта
+
+"""
 # sql вывод статистики
 import sqlite3
 with open('Statistics.sql', 'r') as sql_file:
@@ -12,7 +19,7 @@ cursor.execute(req)
 result = cursor.fetchall()
 print(result)
 
-"""
+
 from kivy.app import App
 from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout  # кнопки должны быть внутри слоя
