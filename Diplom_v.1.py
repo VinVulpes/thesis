@@ -39,7 +39,7 @@ CREATE TABLE Parsing (
   Type_mes VARCHAR NULL DEFAULT NULL,
   File_path VARCHAR NULL DEFAULT NULL,
   Line_num_file VARCHAR NULL DEFAULT NULL,
-  Time_m VARCHAR NULL DEFAULT NULL,
+  Time_m INTEGER NULL DEFAULT NULL,
   Cause VARCHAR NULL DEFAULT NULL,
   Prefix VARCHAR NULL DEFAULT NULL,
   Message VARCHAR NULL DEFAULT NULL,
@@ -108,16 +108,15 @@ def parsing_file(patrh_log_file):
     data_quant = []
     global sqlite_connection
     for num_str, line in enumerate(log_file):
-        if line.startswith("UVM_INFO /") or line.startswith("UVM_WARNING /") or line.startswith(
-                "UVM_ERROR /") or line.startswith("UVM_FATAL /") or line.startswith("OTHER /"):
-            pr_text = text.parseString(line)
+        pr_text = text.parseString(line)
+        if len(pr_text) != 0:
             pars_file.write(str(pr_text) + '\n')
             # Вставка отпарсенных данных в БД
             data_par.append([' '.join(text.parseString(line)), pr_text[0], pr_text[1], pr_text[2], pr_text[3],
-                              pr_text[4],
-                              pr_text[5],
-                              pr_text[6], num_str])
-            for i in range (7):
+                             pr_text[4],
+                             pr_text[5],
+                             pr_text[6], num_str])
+            for i in range(7):
                 data_quant.append([(pr_text[i],), i])
     print(data_quant)
     try:
@@ -129,6 +128,7 @@ def parsing_file(patrh_log_file):
         print("Ошибка при работе с SQLite", error)
     sqlite_connection.commit()
     return 'successful'
+
 
 # Печать шаблона таблицы Parsing в файл
 def print_pr(records_f, file):
@@ -147,6 +147,7 @@ def print_pr(records_f, file):
         file.write('\n')
     return file
 
+
 # Печать шаблона таблицы Quantity в файл
 def print_q(records_f, file):
     file.write(
@@ -156,6 +157,7 @@ def print_q(records_f, file):
         file.write("Количество: " + str(row[1]) + '\n')
         file.write("Тип сообщения: " + str(row[2]) + '\n\n')
     return file
+
 
 # Графический интерфейс
 # Описание графического интерфеса
@@ -176,8 +178,8 @@ layout_task = [
     [sg.Button("Работа с комментариями")], [sg.Button("Фильтрация журнала")], [sg.Button("Выход")]]
 # Описание окна Поиска по времени
 layout_time = [
-    [sg.Text("Введите время:")], [sg.Input()],
-    [sg.Button("Поиск")], [sg.Button("Выход")]]
+    [sg.Text("Введите время:")], [sg.Text("Введите от какого времени")], [sg.Input()],
+    [sg.Text("Введите до какого времени")], [sg.Input()], [sg.Button("Поиск")], [sg.Button("Выход")]]
 # Описание окна Работы с комментариями
 layout_com = [[sg.Text("Введите комментарий:")],
               [sg.Input()], [sg.Text("Введите номер строки в логфайле:")], [sg.Input()], [sg.Button("Добавить")],
@@ -186,8 +188,6 @@ layout_com = [[sg.Text("Введите комментарий:")],
 layout_filt = [
     [sg.Button("Фильтровать по типам")],
     [sg.Button("Фильтровать по номерам строки в файле")],
-    [sg.Text("Диапазон времени")], [sg.Text("Введите от какого времени")], [sg.Input()],
-    [sg.Text("Введите до какого времени")], [sg.Input()], [sg.Button("Фильтровать по диапозону времени")],
     [sg.Button("Выход")]]
 
 # Открытие первого окна
@@ -314,13 +314,12 @@ while True:
                 sql_script = sql_file.read()
             db = sqlite3.connect(db_name)
             cursor = db.cursor()
-            d = [val_time[0], val_time[0]]
+            d = [val_time[0], val_time[1]]
             cursor.execute(sql_script, d)
             time_file = open("Search Time " + data.strftime('%d-%m-%Y %H.%M.%S') + ' ' + str(val_time[0]) + ".txt",
                              "a+")
             print_pr(cursor.fetchall(), time_file)
             time_file.close()
-            db.commit()
             db.close()
         fl_win_time = False
         win_time.close()
@@ -340,7 +339,6 @@ while True:
                             "a+")
             print_pr(cursor.fetchall(), com_file)
             com_file.close()
-            db.commit()
             db.close()
             fl_win_com = False
             win_com.close()
@@ -371,7 +369,6 @@ while True:
                                  "a+")
             print_q(cursor.fetchall(), fil_type_file)
             fil_type_file.close()
-            db.commit()
             db.close()
             fl_win_filt = False
             win_filt.close()
@@ -386,22 +383,6 @@ while True:
                                  "a+")
             print_pr(cursor.fetchall(), fil_nstr_file)
             fil_nstr_file.close()
-            db.commit()
-            db.close()
-            fl_win_filt = False
-            win_filt.close()
-        if ev_filt == 'Фильтровать по диапозону времени':
-            with open('Filter by Range.sql', 'r') as sql_file:
-                sql_script = sql_file.read()
-            db = sqlite3.connect(db_name)
-            cursor = db.cursor()
-            d = [val_filt[0], val_filt[1]]
-            cursor.execute(sql_script, d)
-            fil_range_file = open("Filter by Range " + data.strftime('%d-%m-%Y %H.%M.%S') + ".txt",
-                                 "a+")
-            print_pr(cursor.fetchall(), fil_range_file)
-            fil_range_file.close()
-            db.commit()
             db.close()
             fl_win_filt = False
             win_filt.close()

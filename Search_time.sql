@@ -1,3 +1,3 @@
 SELECT * FROM Parsing
-Where (Time_m>?-60 AND Time_m<?+60)
+WHERE Time_m>? and Time_m<?
 ORDER BY Time_m;

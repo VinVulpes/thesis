@@ -4093,7 +4093,7 @@ Number of caught UVM_WARNING reports :    0
 --- UVM Report Summary ---
 
 ** Report counts by severity
-UVM_INFO :  970
+UVM_INFO :  969
 UVM_WARNING :    0
 UVM_ERROR :    0
 UVM_FATAL :    0
