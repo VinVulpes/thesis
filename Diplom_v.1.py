@@ -186,8 +186,9 @@ layout_com = [[sg.Text("Введите комментарий:")],
               [sg.Button("Вывести все строки с комментариями")], [sg.Button("Выход")]]
 # Описание окна Фильтрации файла
 layout_filt = [
-    [sg.Button("Фильтровать по типам")],
-    [sg.Button("Фильтровать по номерам строки в файле")],
+    [sg.Button("Фильтровать статистику по типам")],
+    [sg.Button("Фильтровать статистикупо номерам строки в файле")], [sg.Text("Введите название типа сообщения:")],
+    [sg.Input()], [sg.Text("Введите название сообщения")], [sg.Input()], [sg.Button("Фильтровать по названию")],
     [sg.Button("Выход")]]
 
 # Открытие первого окна
@@ -246,7 +247,7 @@ while True:
     # Обработка функций в окне подключения существующей базы данных
     if fl_win_way_db:
         ev_way_db, val_way_db = win_way_db.Read()
-        if ev_way_db in ("Выход', sg.WIN_CLOSED"):
+        if ev_way_db in ("Выход, sg.WIN_CLOSED"):
             fl_win_way_db = False
             win_way_db.close()
         if ev_way_db == 'Подключить БД':
@@ -273,7 +274,6 @@ while True:
             stat_file = open("Statistics_parsing " + data.strftime('%d-%m-%Y %H.%M.%S') + ".txt", "a+")
             print_pr(cursor.fetchall(), stat_file)
             stat_file.close()
-            db.commit()
             with open('Statistics_quantity.sql', 'r') as sql_file:
                 sql_script = sql_file.read()
             db = sqlite3.connect(db_name)
@@ -383,6 +383,19 @@ while True:
                                  "a+")
             print_pr(cursor.fetchall(), fil_nstr_file)
             fil_nstr_file.close()
+            db.close()
+            fl_win_filt = False
+            win_filt.close()
+        if ev_filt == 'Фильтровать по названию':
+            with open('Filter by Custom, type = ' + val_filt[0] + '.sql', 'r') as sql_file:
+                sql_script = sql_file.read()
+            db = sqlite3.connect(db_name)
+            cursor = db.cursor()
+            cursor.execute(sql_script, [val_filt[1]])
+            fil_cust_file = open("Filter by Custom " + data.strftime('%d-%m-%Y %H.%M.%S') + ".txt",
+                                 "a+")
+            print_pr(cursor.fetchall(), fil_cust_file)
+            fil_cust_file.close()
             db.close()
             fl_win_filt = False
             win_filt.close()
