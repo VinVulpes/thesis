@@ -13,7 +13,6 @@ def create_connection(path):  # Соединение с БД
     connection = None
     try:
         connection = sqlite3.connect(path)
-        print("Подключение к SQLite БД успешно")
     except Error as e:
         print(f"Ошибка при подключении к SQLite БД: '{e}'")
 
@@ -25,9 +24,7 @@ def execute_query(connection, query):  # Запрос к БД
     try:
         curs.execute(query)
         connection.commit()
-        print("Запрос выполнен успешно")
     except Error as e:
-        print(query)
         print(f"Ошибка при запросе: '{e}'")
 
 
@@ -62,7 +59,6 @@ def insert_param_pars(d):
     with open('Insert_pars.sql', 'r') as sql_file:
         sqlite_insert_with_param = sql_file.read()
     cursor.executemany(sqlite_insert_with_param, d)
-    print("Переменные Python успешно вставлены в таблицу Parsing")
 
 
 # Вставка параметров в таблицу Quantity
@@ -87,7 +83,6 @@ def insert_quant(d):
             cursor.execute(sqlite_incr, (str(d[i][0]),))
         else:
             cursor.execute(sqlite_incr, (str(d[i][0]),))
-        print("Переменные Python успешно вставлены в таблицу Quantity")
 
 
 # Парсинг логфайла и вствка данных
@@ -96,11 +91,11 @@ def parsing_file(patrh_log_file):
     pars_file = open("Parsing_file " + data.strftime('%H.%M.%S %d-%m-%Y') + ".log", "a+")
 
     type_mes = Word("UVM_" + alphas)
-    file_path = Word(alphas + "/" + nums + "_" + ".")  # путь к файлу
-    line_num = Suppress('(') + Word(nums) + Suppress(')')  # номер строки
+    file_path = ZeroOrMore(Word(alphanums + "/" + "_" + "."))  # путь к файлу
+    line_num = ZeroOrMore((Suppress('(')) + Word(nums) + Suppress(')'))  # номер строки
     time_m = Suppress('@') + Word(' ' + nums) + Suppress(':')  # время появления сообщения в фс
     cause = Word(alphas + "." + "_" + nums + "@")  # !тут еще всякие @ _ глнянь# название тестовой последовательности
-    prefix = Suppress('[') + Word(alphas + ":") + Suppress(']')  # префикс сообщения
+    prefix = Suppress('[') + Word(alphas + ":" + '_') + Suppress(']')  # префикс сообщения
     message = Word(
         alphas + ":" + "'" + nums + "." + "=" + " " + "(" + ")" + "," + "-" + "*")  # ! еще цифры в сообщении# сообщение
     text = ZeroOrMore(type_mes + file_path + line_num + time_m + cause + prefix + message)
@@ -110,6 +105,9 @@ def parsing_file(patrh_log_file):
     for num_str, line in enumerate(log_file):
         pr_text = text.parseString(line)
         if len(pr_text) != 0:
+            if len(pr_text) != 7:
+                pr_text.insert(1, None)
+                pr_text.insert(1, None)
             pars_file.write(str(pr_text) + '\n')
             # Вставка отпарсенных данных в БД
             data_par.append([' '.join(text.parseString(line)), pr_text[0], pr_text[1], pr_text[2], pr_text[3],
@@ -166,11 +164,12 @@ layout_main = [[sg.Button('Создать новую базу данных'), sg
                [sg.Button('Выход')]]
 # Описание окна Создания новой базы данных
 layout_new_db = [
-    [sg.Text("Введите путь к лог файлу:")], [sg.Input(),sg.FileBrowse('Выбрать файл')], [sg.Text("Введите название теста:")], [sg.Input()],
+    [sg.Text("Введите путь к лог файлу:")], [sg.Input(), sg.FileBrowse('Выбрать файл')],
+    [sg.Text("Введите название теста:")], [sg.Input()],
     [sg.Button("Загрузить в новую БД отпарсенный файл")], [sg.Button("Выход")]]
 # Описание окна Подключения к существующей базе данных
 layout_way_db = [
-    [sg.Text("Введите путь к БД:")], [sg.Input(),sg.FileBrowse('Выбрать файл')],
+    [sg.Text("Введите путь к БД:")], [sg.Input(), sg.FileBrowse('Выбрать файл')],
     [sg.Button("Подключить БД")], [sg.Button("Выход")]]
 # Описание окна Списка задач
 layout_task = [
@@ -188,11 +187,13 @@ layout_com = [[sg.Text("Введите комментарий:")],
 layout_filt = [
     [sg.Button("Фильтровать статистику по типам")],
     [sg.Button("Фильтровать статистику по номерам строки в файле")],
-    [sg.Text('********************\nCправка о типе сообщений\n0 - Тип сообщения(UVM_...)\n1 -Путь к файлу\n2 -Номер строки в UVM файле\n3 -Время в фс\n4 -Причина вызова сообщения\n5 -Префикс сообщения\n6 -Сообщение\n********************\n')],[
-                                                                                                                                                                                                                                           sg.Text(
-                                                                                                                                                                                                                                               "Введите номер типа:")],
-[sg.Input()], [sg.Text("Введите название сообщения")], [sg.Input()], [sg.Button("Фильтровать по названию")],
-[sg.Button("Выход")]]
+    [sg.Text(
+        '********************\nCправка о типе сообщений\n0 - Тип сообщения(UVM_...)\n1 -Путь к файлу\n2 -Номер строки в UVM файле\n3 -Время в фс\n4 -Причина вызова сообщения\n5 -Префикс сообщения\n6 -Сообщение\n********************\n')],
+    [
+        sg.Text(
+            "Введите номер типа:")],
+    [sg.Input()], [sg.Text("Введите название сообщения")], [sg.Input()], [sg.Button("Фильтровать по названию")],
+    [sg.Button("Выход")]]
 
 # Открытие первого окна
 window = sg.Window('Главная', layout_main)
@@ -214,7 +215,7 @@ while True:
     # Открытие окна создания новой базы данных
     if not fl_win_new_db and ev_main == 'Создать новую базу данных':
         fl_win_new_db = True
-        win_new_db = sg.Window("Новая БД", layout_new_db)
+        win_new_db = sg.Window("Предобработанный файл", layout_new_db)
         window.close()
     # Открытие окна подключения существующей базы данных
     if not fl_win_new_db and ev_main == 'Открыть существующую базу данных':
@@ -402,5 +403,3 @@ while True:
             db.close()
             fl_win_filt = False
             win_filt.close()
-
-    time.sleep(1)

@@ -1,2 +1,2 @@
-SELECT * FROM Quantity
-ORDER BY Type_mes_q
+SELECT * FROM Parsing
+ORDER BY Type_mes
