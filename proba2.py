@@ -1,20 +1,38 @@
 import PySimpleGUI as sg
 
-# layout the window
-layout = [[sg.Text('A custom progress meter')],
-          [sg.ProgressBar(200, orientation='h', size=(20, 20), key='progressbar')],
-          [sg.Cancel()]]
+font = ('Courier New', 16)
+text = '\n'.join(chr(i) * 50 for i in range(65, 250))
+column = [[sg.Text(text, font=font)]]
 
-# create the window`
-window = sg.Window('Custom Progress Meter', layout)
-progress_bar = window['progressbar']
-# loop that would normally do something useful
-for i in range(200):
-    # check to see if the cancel button was clicked and exit loop if clicked
-    event, values = window.read(timeout=10)
-    if event == 'Cancel'  or event == sg.WIN_CLOSED:
+layout = [
+    [sg.Column(column, size=(800, 300), scrollable=True, key="Column")],
+    [sg.OK(), sg.Button('Up', key="up"), sg.Button('Down', key="down")],
+]
+
+window = sg.Window('Demo', layout, finalize=True)
+pos = 0.0
+while True:
+    event, values = window.read()
+    if event == sg.WIN_CLOSED:
         break
-  # update bar with loop value +1 so that bar eventually reaches the maximum
-    progress_bar.UpdateBar(i + 1)
-# done with loop... need to destroy the window as it's still open
+    elif event == "down":
+        window['Column'].Widget.canvas.yview_moveto(1.0)
+    elif event == "up":
+        window['Column'].Widget.canvas.yview_moveto(0.0)
+
 window.close()
+'''
+event, values = window.read()
+    if event == sg.WIN_CLOSED:
+        break
+    elif event == "down":
+        pos += 0.1
+        if pos > 0.9:
+            pos = 0.9
+        window['Column'].Widget.set_vscroll_position(pos)
+    elif event == "up":
+        pos -= 0.1
+        if pos < 0:
+            pos = 0.0
+        window['Column'].Widget.canvas.yview_moveto(pos)
+'''

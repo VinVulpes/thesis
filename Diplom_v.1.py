@@ -3,7 +3,6 @@ import datetime
 import sqlite3
 from sqlite3 import *
 import PySimpleGUI as sg
-import time
 
 data = datetime.datetime.today() - datetime.timedelta(1)  # текущая дата и время
 
@@ -94,10 +93,10 @@ def parsing_file(patrh_log_file):
     file_path = ZeroOrMore(Word(alphanums + "/" + "_" + "."))  # путь к файлу
     line_num = ZeroOrMore((Suppress('(')) + Word(nums) + Suppress(')'))  # номер строки
     time_m = Suppress('@') + Word(' ' + nums) + Suppress(':')  # время появления сообщения в фс
-    cause = Word(alphas + "." + "_" + nums + "@")  # !тут еще всякие @ _ глнянь# название тестовой последовательности
+    cause = Word(alphanums + "." + "_" + "@")  # название тестовой последовательности
     prefix = Suppress('[') + Word(alphas + ":" + '_') + Suppress(']')  # префикс сообщения
     message = Word(
-        alphas + ":" + "'" + nums + "." + "=" + " " + "(" + ")" + "," + "-" + "*")  # ! еще цифры в сообщении# сообщение
+        alphanums + ":" + "'" + "." + "=" + " " + "(" + ")" + "," + "-" + "*")  # сообщение
     text = ZeroOrMore(type_mes + file_path + line_num + time_m + cause + prefix + message)
     data_par = []
     data_quant = []
@@ -119,7 +118,6 @@ def parsing_file(patrh_log_file):
     print(data_quant)
     try:
         sqlite_connection = sqlite3.connect(db_name)
-        print("Подключен к SQLite")
         insert_param_pars(data_par)
         insert_quant(data_quant)
     except sqlite3.Error as error:
@@ -166,7 +164,7 @@ layout_main = [[sg.Button('Создать новую базу данных'), sg
 layout_new_db = [
     [sg.Text("Введите путь к лог файлу:")], [sg.Input(), sg.FileBrowse('Выбрать файл')],
     [sg.Text("Введите название теста:")], [sg.Input()],
-    [sg.Button("Загрузить в новую БД отпарсенный файл")], [sg.Button("Выход")]]
+    [sg.Button("Загрузить в новую БД предобработанный файл")], [sg.Button("Выход")]]
 # Описание окна Подключения к существующей базе данных
 layout_way_db = [
     [sg.Text("Введите путь к БД:")], [sg.Input(), sg.FileBrowse('Выбрать файл')],
@@ -194,7 +192,6 @@ layout_filt = [
             "Введите номер типа:")],
     [sg.Input()], [sg.Text("Введите название сообщения")], [sg.Input()], [sg.Button("Фильтровать по названию")],
     [sg.Button("Выход")]]
-
 # Открытие первого окна
 window = sg.Window('Главная', layout_main)
 # Флаги для закрытия окон
@@ -204,11 +201,12 @@ fl_win_task = False
 fl_win_time = False
 fl_win_com = False
 fl_win_filt = False
+fl_win_p = False
+fl_win_q = False
 # Открытие графического интерфейса
 while True:
     ev_main, val_main = window.read()
     if ev_main in (sg.WIN_CLOSED, 'Выход'):
-        # User closed the Window or hit the Cancel button
         if not fl_win_new_db:
             if not fl_win_task:
                 break
@@ -228,7 +226,7 @@ while True:
         if ev_new_db in ('Выход', sg.WIN_CLOSED):
             fl_win_new_db = False
             win_new_db.close()
-        if not fl_win_task and ev_new_db == 'Загрузить в новую БД отпарсенный файл':
+        if not fl_win_task and ev_new_db == 'Загрузить в новую БД предобработанный файл':
             # Создание БД
             db_name = str(val_new_db[1]) + " " + data.strftime('%H.%M.%S %d-%m-%Y') + ".sqlite"  # Создание БД
             connection = create_connection(db_name)  # Подключение к БД
@@ -275,19 +273,28 @@ while True:
             db = sqlite3.connect(db_name)
             cursor = db.cursor()
             cursor.execute(sql_script)
-            stat_file = open("Statistics_parsing " + data.strftime('%d-%m-%Y %H.%M.%S') + ".txt", "a+")
-            print_pr(cursor.fetchall(), stat_file)
-            stat_file.close()
+            path_p = 'Statistics_parsing' + data.strftime('%d-%m-%Y %H.%M.%S') + '.txt'
+            p_file = open(path_p, 'a+')
+            print_pr(cursor.fetchall(), p_file)
+            p_file.close()
             with open('Statistics_quantity.sql', 'r') as sql_file:
                 sql_script = sql_file.read()
             db = sqlite3.connect(db_name)
             cursor = db.cursor()
             cursor.execute(sql_script)
-            q_file = open("Statistics_quary " + data.strftime('%d-%m-%Y %H.%M.%S') + ".txt", "a+")
+            path_q = 'Statistics_quantity ' + data.strftime('%d-%m-%Y %H.%M.%S') + '.txt'
+            q_file = open(path_q, 'a+')
             print_q(cursor.fetchall(), q_file)
             q_file.close()
             db.close()
             win_task.close()
+            p_file = open(path_p, 'r')
+            layout_p = [[sg.Multiline(p_file.read(), size=(100, 30), key='ML_p')],
+                        [sg.Button('Вверх'), sg.Button('Вниз'), sg.Button('Открыть статистику по Quantity'),
+                         sg.Button('Выход')]]
+            window = sg.Window("Статистика Parsing", layout_p, location=(0, 100), finalize=True)
+            win_p = window
+            fl_win_p = True
             fl_win_task = False
         if ev_task == 'Поиск по времени':
             window = sg.Window("Время", layout_time)
@@ -320,13 +327,19 @@ while True:
             cursor = db.cursor()
             d = [val_time[0], val_time[1]]
             cursor.execute(sql_script, d)
-            time_file = open("Search Time " + data.strftime('%d-%m-%Y %H.%M.%S') + ' ' + str(val_time[0]) + ".txt",
-                             "a+")
+            path_time = 'Search Time ' + data.strftime('%d-%m-%Y %H.%M.%S') + ' ' + str(val_time[0]) + '.txt'
+            time_file = open(path_time, 'a+')
             print_pr(cursor.fetchall(), time_file)
             time_file.close()
+            time_file = open(path_time, 'r')
+            layout_p = [[sg.Multiline(time_file.read(), size=(100, 30), key='ML_p')],
+                        [sg.Button('Вверх'), sg.Button('Вниз'), sg.Button('Выход')]]
+            window = sg.Window('Результаты поиска по времени', layout_p, location=(0, 100), finalize=True)
+            win_p = window
+            fl_win_p = True
             db.close()
-        fl_win_time = False
-        win_time.close()
+            fl_win_time = False
+            win_time.close()
     if fl_win_com:
         ev_com, val_com = win_com.Read()
         if ev_com in ('Выход', sg.WIN_CLOSED):
@@ -339,10 +352,16 @@ while True:
             db = sqlite3.connect(db_name)
             cursor = db.cursor()
             cursor.execute(sql_script)
-            com_file = open("All with Comments " + data.strftime('%d-%m-%Y %H.%M.%S') + ".txt",
-                            "a+")
+            path_com = 'All with Comments' + data.strftime('%d-%m-%Y %H.%M.%S') + '.txt'
+            com_file = open(path_com, 'a+')
             print_pr(cursor.fetchall(), com_file)
             com_file.close()
+            com_file = open(path_com, 'r')
+            layout_p = [[sg.Multiline(com_file.read(), size=(100, 30), key='ML_p')],
+                        [sg.Button('Вверх'), sg.Button('Вниз'), sg.Button('Выход')]]
+            window = sg.Window('Все строки с комментариями', layout_p, location=(0, 100), finalize=True)
+            win_p = window
+            fl_win_p = True
             db.close()
             fl_win_com = False
             win_com.close()
@@ -369,10 +388,16 @@ while True:
             db = sqlite3.connect(db_name)
             cursor = db.cursor()
             cursor.execute(sql_script)
-            fil_type_file = open("Filter by types " + data.strftime('%d-%m-%Y %H.%M.%S') + ".txt",
-                                 "a+")
-            print_q(cursor.fetchall(), fil_type_file)
+            path_fil = 'Filter by types ' + data.strftime('%d-%m-%Y %H.%M.%S') + '.txt'
+            fil_type_file = open(path_fil, 'a+')
+            print_pr(cursor.fetchall(), fil_type_file)
             fil_type_file.close()
+            fil_type_file = open(path_fil, 'r')
+            layout_p = [[sg.Multiline(fil_type_file.read(), size=(100, 30), key='ML_p')],
+                        [sg.Button('Вверх'), sg.Button('Вниз'), sg.Button('Выход')]]
+            window = sg.Window('Результат фильтрования по типам', layout_p, location=(0, 100), finalize=True)
+            win_p = window
+            fl_win_p = True
             db.close()
             fl_win_filt = False
             win_filt.close()
@@ -383,10 +408,16 @@ while True:
             db = sqlite3.connect(db_name)
             cursor = db.cursor()
             cursor.execute(sql_script)
-            fil_nstr_file = open("Filter by Num_str " + data.strftime('%d-%m-%Y %H.%M.%S') + ".txt",
-                                 "a+")
+            path_fil = 'Filter by Num_str' + data.strftime('%d-%m-%Y %H.%M.%S') + '.txt'
+            fil_nstr_file = open(path_fil, 'a+')
             print_pr(cursor.fetchall(), fil_nstr_file)
             fil_nstr_file.close()
+            fil_nstr_file = open(path_fil, 'r')
+            layout_p = [[sg.Multiline(fil_nstr_file.read(), size=(100, 30), key='ML_p')],
+                        [sg.Button('Вверх'), sg.Button('Вниз'), sg.Button('Выход')]]
+            window = sg.Window('Результат фильтрования по строкам', layout_p, location=(0, 100), finalize=True)
+            win_p = window
+            fl_win_p = True
             db.close()
             fl_win_filt = False
             win_filt.close()
@@ -396,10 +427,50 @@ while True:
             db = sqlite3.connect(db_name)
             cursor = db.cursor()
             cursor.execute(sql_script, [val_filt[1]])
-            fil_cust_file = open("Filter by Custom " + data.strftime('%d-%m-%Y %H.%M.%S') + ".txt",
-                                 "a+")
+            path_fil = 'Filter by Custom' + data.strftime('%d-%m-%Y %H.%M.%S') + '.txt'
+            fil_cust_file = open(path_fil, 'a+')
             print_pr(cursor.fetchall(), fil_cust_file)
             fil_cust_file.close()
+            fil_cust_file = open(path_fil, 'r')
+            layout_p = [[sg.Multiline(fil_cust_file.read(), size=(100, 30), key='ML_p')],
+                        [sg.Button('Вверх'), sg.Button('Вниз'), sg.Button('Выход')]]
+            window = sg.Window('Результат фильтрования по названию', layout_p, location=(0, 100), finalize=True)
+            win_p = window
+            fl_win_p = True
             db.close()
             fl_win_filt = False
             win_filt.close()
+    if fl_win_p:
+        ev_p, val_p = win_p.read()
+        if ev_p in ('Выход', sg.WIN_CLOSED):
+            fl_win_pr_p = False
+            win_p.close()
+        elif ev_p == 'Вверх':
+            window['ML_p'].Widget.yview_moveto(0.0)
+        elif ev_p == 'Вниз':
+            win_p['ML_p'].Widget.yview_moveto(1.0)
+        elif ev_p == 'Открыть статистику по Quantity':
+            q_file = open(path_q, 'r')
+            layout_q = [[sg.Multiline(q_file.read(), size=(100, 30), key='ML_q')],
+                        [sg.Button('Вверх'), sg.Button('Вниз'), sg.Button('Открыть статистику по Parsing'),
+                         sg.Button('Выход')]]
+            window = sg.Window("Статистика Quantity", layout_q, location=(200, 100), finalize=True)
+            win_q = window
+            fl_win_q = True
+            win_p.close()
+            fl_win_p = False
+    if fl_win_q:
+        ev_q, val_q = win_q.read()
+        if ev_q in ('Выход', sg.WIN_CLOSED):
+            fl_win_q = False
+            win_q.close()
+        elif ev_q == 'Вверх':
+            window['ML_q'].Widget.yview_moveto(0.0)
+        elif ev_q == 'Вниз':
+            win_q['ML_q'].Widget.yview_moveto(1.0)
+        elif ev_q == 'Открыть статистику по Parsing':
+            window = sg.Window("Статистика Parsing", layout_p, location=(0, 100), finalize=True)
+            win_p = window
+            fl_win_p = True
+            win_q.close()
+            fl_win_q = False
